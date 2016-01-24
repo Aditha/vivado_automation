@@ -1,0 +1,49 @@
+#!/usr/bin/tclsh
+# author : aditha rajakaruna
+# email : aditha102@gmail.com
+# ---------------------------------------------------------
+proc print_usage {} {
+    puts "Usage vivado_run <options>"
+    puts "Options : "
+    puts "\ts\t: synthesize"
+    puts "\tp\t: place"
+    puts "\tr\t: route"
+    puts "\tb\t: generate bitstream"
+    puts "\th\t: print usage"
+}
+# ---------------------------------------------------------
+proc run_synthesize { top logdir outdir } {
+    synth_design -top $top
+    write_checkpoint -force $outdir/post_synth
+    report_utilization -file $logdir/post_synth_util.rpt
+    report_timing -sort_by group -max_paths 5 -path_type \
+        summary -file $logdir/post_synth_timing.rpt
+}
+# ---------------------------------------------------------
+proc run_place { logdir outdir } {
+    opt_design
+    power_opt_design
+    place_design
+    phys_opt_design
+    write_checkpoint -force $outdir/post_place
+    report_clock_utilization -file $logdir/clock_util.rpt
+    report_utilization -file $logdir/post_place_util.rpt
+    report_timing -sort_by group -max_paths 5 -path_type \
+    summary -file $logdir/post_place_timing.rpt
+}
+# ---------------------------------------------------------
+proc run_route { top logdir outdir } {
+    route_design
+    write_checkpoint -force $outdir/post_route
+    report_timing_summary -file $logdir/post_route_timing_summary.rpt
+    report_utilization -file $logdir/post_route_util.rpt
+    report_power -file $logdir/post_route_power.rpt
+    report_drc -file $logdir/post_imp_drc.rpt
+    write_verilog -force "${outdir}/${top}_impl_netlist.v"
+    write_xdc -no_fixed_only -force "${outdir}/${top}_impl.xdc"
+}
+# ---------------------------------------------------------
+proc run_bitgen {top outdir} {
+    write_bitstream "${outdir}/${top}_design.bit"
+}
+# - Main --------------------------------------------------
