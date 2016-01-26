@@ -47,3 +47,42 @@ proc run_bitgen {top outdir} {
     write_bitstream "${outdir}/${top}_design.bit"
 }
 # - Main --------------------------------------------------
+set arglist [join $argv ""]
+set en_synth 0
+set en_place 0
+set en_route 0
+set en_bitgen 0
+if { [string length $arglist] == 0 } {
+    set en_synth 1
+    set en_place 1
+    set en_route 1
+    set en_bitgen 1
+} else {
+    if { [string match -nocase *h* $arglist] } {
+        print_usage
+        exit
+    }
+    if { [string match -nocase *s* $arglist] } {
+        set en_synth 1
+    }
+    if { [string match -nocase *p* $arglist] } {
+        set en_place 1
+    }
+    if { [string match -nocase *r* $arglist] } {
+        set en_route 1
+    }
+    if { [string match -nocase *b* $arglist] } {
+        set en_bitgen 1
+    }
+}
+# - Gathering inputs --------------------------------------
+if { [catch {set_part $device} errmsg] } {
+    puts "Error : ${errmsg}"
+    exit
+}
+foreach rtl_src_path $rtl_src_paths {
+    if { [catch {read_verilog [glob $rtl_src_path/*.v]} errmsg] } {
+        puts "Error : ${errmsg}"
+        exit
+    }
+}
