@@ -18,5 +18,5 @@ set s_syn_directive         "default"
 set s_place_directive       "default"
 # Route Settings
 set s_route_directive       "default"
-# Bit file Generation Engine
+# Bit file Generation Settings
 # TODO

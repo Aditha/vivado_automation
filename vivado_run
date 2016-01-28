@@ -1,51 +1,6 @@
 #!/usr/bin/tclsh
 # author : aditha rajakaruna
 # email : aditha102@gmail.com
-# ---------------------------------------------------------
-proc print_usage {} {
-    puts "Usage vivado_run <options>"
-    puts "Options : "
-    puts "\ts\t: synthesize"
-    puts "\tp\t: place"
-    puts "\tr\t: route"
-    puts "\tb\t: generate bitstream"
-    puts "\th\t: print usage"
-}
-# ---------------------------------------------------------
-proc run_synthesize { top logdir outdir } {
-    synth_design -top $top
-    write_checkpoint -force $outdir/post_synth
-    report_utilization -file $logdir/post_synth_util.rpt
-    report_timing -sort_by group -max_paths 5 -path_type \
-        summary -file $logdir/post_synth_timing.rpt
-}
-# ---------------------------------------------------------
-proc run_place { logdir outdir } {
-    opt_design
-    power_opt_design
-    place_design
-    phys_opt_design
-    write_checkpoint -force $outdir/post_place
-    report_clock_utilization -file $logdir/clock_util.rpt
-    report_utilization -file $logdir/post_place_util.rpt
-    report_timing -sort_by group -max_paths 5 -path_type \
-        summary -file $logdir/post_place_timing.rpt
-}
-# ---------------------------------------------------------
-proc run_route { top logdir outdir } {
-    route_design
-    write_checkpoint -force $outdir/post_route
-    report_timing_summary -file $logdir/post_route_timing_summary.rpt
-    report_utilization -file $logdir/post_route_util.rpt
-    report_power -file $logdir/post_route_power.rpt
-    report_drc -file $logdir/post_imp_drc.rpt
-    write_verilog -force "${outdir}/${top}_impl_netlist.v"
-    write_xdc -no_fixed_only -force "${outdir}/${top}_impl.xdc"
-}
-# ---------------------------------------------------------
-proc run_bitgen { top outdir } {
-    write_bitstream "${outdir}/${top}_design.bit"
-}
 # - Main --------------------------------------------------
 if { [catch {source "inputs.tcl"} errmsg] } {
     puts "Error : ${errmsg}"
@@ -62,4 +17,60 @@ foreach rtl_src_path [split $rtl_src_paths ","] {
         puts "Error : ${errmsg}"
         exit
     }
+}
+# TODO Read constraint files
+# TODO Read and upgrade ip cores
+# - Synthesis ---------------------------------------------
+if { $en_synth == 1 } {
+    synth_design -top $top
+    write_checkpoint -force $outdir/post_synth
+    set en_newrun 1
+    report_utilization -file $logdir/post_synth_util.rpt
+    report_timing -sort_by group -max_paths 5 -path_type \
+        summary -file $logdir/post_synth_timing.rpt
+}
+# - Place -------------------------------------------------
+if { $en_place == 1 } {
+    if { $en_newrun == 0 } {
+        if { [catch {load_checkpoint $outdir/post_synth} errmsg] } {
+            puts "Error : ${errmsg}"
+            exit
+        }
+    }
+    opt_design
+    power_opt_design
+    place_design
+    phys_opt_design
+    write_checkpoint -force $outdir/post_place
+    report_clock_utilization -file $logdir/clock_util.rpt
+    report_utilization -file $logdir/post_place_util.rpt
+    report_timing -sort_by group -max_paths 5 -path_type \
+        summary -file $logdir/post_place_timing.rpt
+}
+# - Route -------------------------------------------------
+if { $en_route == 1 } {
+    if { $en_newrun == 0 } {
+        if { [catch {load_checkpoint $outdir/post_place} errmsg] } {
+            puts "Error : ${errmsg}"
+            exit
+        }
+    }
+    route_design
+    write_checkpoint -force $outdir/post_route
+    report_timing_summary -file $logdir/post_route_timing_summary.rpt
+    report_utilization -file $logdir/post_route_util.rpt
+    report_power -file $logdir/post_route_power.rpt
+    report_drc -file $logdir/post_imp_drc.rpt
+    write_verilog -force "${outdir}/${top}_impl_netlist.v"
+    write_xdc -no_fixed_only -force "${outdir}/${top}_impl.xdc"
+}
+# - Bit File Generation -----------------------------------
+if { $en_bitgen == 1 } {
+    if { $en_newrun == 0 } {
+        if { [catch {load_checkpoint $outdir/post_route} errmsg] } {
+            puts "Error : ${errmsg}"
+            exit
+        }
+    }
+    write_bitstream "${outdir}/${top}_design.bit" 
 }
