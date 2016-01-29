@@ -3,26 +3,51 @@
 # email : aditha102@gmail.com
 # - Main --------------------------------------------------
 if { [catch {source "inputs.tcl"} errmsg] } {
-    puts "Error : ${errmsg}"
+    puts "vivado_run error : ${errmsg}"
     exit
+}
+set logdir "./logs"
+set outdir "./outputs"
+if { [file isdirectory $logdir] } {
+    if { $en_newrun == 1 } {
+        file delete -force -- [glob -nocomplain $logdir/*]
+    }
+} else {
+    file mkdir $logdir
+}
+if { [file isdirectory $outdir] } {
+    if { $en_newrun == 1 } {
+        file delete -force -- [glob -nocomplain $outdir/*]
+    }
+} else {
+    file mkdir $outdir
 }
 # - Gathering inputs --------------------------------------
 if { [catch {set_part $device} errmsg] } {
-    puts "Error : ${errmsg}"
+    puts "vivado_run error : ${errmsg}"
     exit
 }
+# - Read RTL models
 foreach rtl_src_path [split $rtl_src_paths ","] {
     set rtl_src_path [string trim $rtl_src_path]
     if { [catch {read_verilog [glob $rtl_src_path/*.v]} errmsg] } {
-        puts "Error : ${errmsg}"
+        puts "vivado_run error : ${errmsg}"
         exit
     }
 }
-# TODO Read constraint files
+# - Read constraint files
+foreach xdc_src_path [split $xdc_src_paths ","] {
+    set xdc_src_path [string trim $xdc_src_path]
+    if { [catch {read_xdc [glob $xdc_src_path/*.xdc]} errmsg] } {
+        puts "vivado_run error : ${errmsg}"
+        exit
+    }
+}
 # TODO Read and upgrade ip cores
 # - Synthesis ---------------------------------------------
 if { $en_synth == 1 } {
-    synth_design -top $top
+    synth_design -top $top -flatten_hierarchy $s_flattern_hierarchy \
+        -directive $s_syn_directive -verbose
     write_checkpoint -force $outdir/post_synth
     set en_newrun 1
     report_utilization -file $logdir/post_synth_util.rpt
@@ -33,15 +58,16 @@ if { $en_synth == 1 } {
 if { $en_place == 1 } {
     if { $en_newrun == 0 } {
         if { [catch {load_checkpoint $outdir/post_synth} errmsg] } {
-            puts "Error : ${errmsg}"
+            puts "vivado_run error : ${errmsg}"
             exit
         }
     }
-    opt_design
-    power_opt_design
-    place_design
-    phys_opt_design
+    opt_design -verbose
+    power_opt_design -verbose
+    place_design -directive $s_place_directive -verbose
+    phys_opt_design -verbose
     write_checkpoint -force $outdir/post_place
+    set en_newrun 1
     report_clock_utilization -file $logdir/clock_util.rpt
     report_utilization -file $logdir/post_place_util.rpt
     report_timing -sort_by group -max_paths 5 -path_type \
@@ -51,7 +77,7 @@ if { $en_place == 1 } {
 if { $en_route == 1 } {
     if { $en_newrun == 0 } {
         if { [catch {load_checkpoint $outdir/post_place} errmsg] } {
-            puts "Error : ${errmsg}"
+            puts "vivado_run error : ${errmsg}"
             exit
         }
     }
@@ -68,7 +94,7 @@ if { $en_route == 1 } {
 if { $en_bitgen == 1 } {
     if { $en_newrun == 0 } {
         if { [catch {load_checkpoint $outdir/post_route} errmsg] } {
-            puts "Error : ${errmsg}"
+            puts "vivado_run error : ${errmsg}"
             exit
         }
     }
