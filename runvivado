@@ -1,0 +1,74 @@
+#!/bin/sh
+# Aditha Rajakaruna <aditha102@gmail.com>
+# ---------------------------------------------------------
+raw=$@
+args=$(echo "${raw// /}")
+# ---------------------------------------------------------
+if [ -z $args ] ; then
+    echo "Invoking new Vivado in memory project for synthesis, place, route and bit file creation"
+    sed -i -e 's/set\s\s*en_newrun\s\s*[01]/set en_newrun 1/' inputs.tcl
+    sed -i -e 's/set\s\s*en_synth\s\s*[01]/set en_synth 1/' inputs.tcl 
+    sed -i -e 's/set\s\s*en_place\s\s*[01]/set en_place 1/' inputs.tcl
+    sed -i -e 's/set\s\s*en_route\s\s*[01]/set en_route 1/' inputs.tcl 
+    sed -i -e 's/set\s\s*en_bitgen\s\s*[01]/set en_bitgen 1/' inputs.tcl
+else
+    # ----------------------------------------------------
+    echo $args | grep -q -e n
+    if [ $? -eq 0 ] ; then
+        echo "Invoking new Vivado in memory project" 
+        sed -i -e 's/set\s\s*en_newrun\s\s*[01]/set en_newrun 1/' inputs.tcl 
+    else
+        echo "Invoking existing Vivado in memory project" 
+        sed -i -e 's/set\s\s*en_newrun\s\s*[01]/set en_newrun 0/' inputs.tcl 
+    fi
+    echo "Enabled options" 
+    # -----------------------------------------------------
+    echo $args | grep -q -e s
+    if [ $? -eq 0 ] ; then
+        echo -e "\tsynthessis" 
+        sed -i -e 's/set\s\s*en_synth\s\s*[01]/set en_synth 1/' inputs.tcl 
+    else
+        sed -i -e 's/set\s\s*en_synth\s\s*[01]/set en_synth 0/' inputs.tcl 
+    fi
+    # -----------------------------------------------------
+    echo $args | grep -q -e p
+    if [ $? -eq 0 ] ; then
+        echo -e "\tplace" 
+        sed -i -e 's/set\s\s*en_place\s\s*[01]/set en_place 1/' inputs.tcl 
+    else
+        sed -i -e 's/set\s\s*en_place\s\s*[01]/set en_place 0/' inputs.tcl 
+    fi
+    # ----------------------------------------------------- 
+    echo $args | grep -q -e r
+    if [ $? -eq 0 ] ; then
+        echo -e "\troute" 
+        sed -i -e 's/set\s\s*en_route\s\s*[01]/set en_route 1/' inputs.tcl 
+    else
+        sed -i -e 's/set\s\s*en_route\s\s*[01]/set en_route 0/' inputs.tcl 
+    fi
+    # ----------------------------------------------------- 
+    echo $args | grep -q -e b
+    if [ $? -eq 0 ] ; then
+        echo -e "\tbit file generation" 
+        sed -i -e 's/set\s\s*en_bitgen\s\s*[01]/set en_bitgen 1/' inputs.tcl 
+    else
+        sed -i -e 's/set\s\s*en_bitgen\s\s*[01]/set en_bitgen 0/' inputs.tcl 
+    fi
+    # ----------------------------------------------------- 
+    echo $args | grep -q -e h
+    if [ $? -eq 0 ] ; then
+        echo "Usage : runvivado <options>"
+        echo "  n   : new vivado run"
+        echo "  s   : synthesize"
+        echo "  p   : placement"
+        echo "  r   : route"
+        echo "  b   : bit file generation"
+        echo "  h   : print this message"
+        exit
+    fi
+fi
+# Run Vivado ----------------------------------------------
+if [ -f vivado.log ] ; then
+    rm vivado.log
+fi
+vivado -mode batch -source vivado_run.tcl | tee vivado.log
